@@ -5,6 +5,7 @@
 int main()
 {
     int fd[2] = {0};
+    int fd2[2] = {0};
     pid_t pid;
     char buf[MAXBUF] = {};
     char input[] = "hello pipe!";
@@ -13,23 +14,23 @@ int main()
 
     /*管道初始化*/
     pipe(fd);
+    pipe(fd2);
 
     pid = fork();
     if (0 == pid)
     {
         /*子进程*/
         write(fd[1], input, sizeof(input));
-        sleep(2); /*管道内的数据为无主数据， 任何人均可读走， 此处保证父进程能读到数据*/
-
-        read_len = read(fd[0], buf, MAXBUF);
+       
+        read_len = read(fd2[0], buf, MAXBUF);
         //puts(buf);
         printf("child buf:%s, readlen:%d\n", buf, read_len);
     }
     else
     {
         /*父进程*/
-        read_len = read(fd[0], buf, MAXBUF);
-        write(fd[1], input2, sizeof(input2));
+        write(fd2[1], input2, sizeof(input2));
+        read_len = read(fd[0], buf, MAXBUF);       
         //puts(buf);
         printf("father buf:%s, readlen:%d\n", buf, read_len);
         sleep(3);
