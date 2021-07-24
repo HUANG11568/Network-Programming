@@ -18,7 +18,10 @@ int main(int argc, char *argv[])
     int  client_sock;
     struct sockaddr_in client_addr;
     int len;
+    int str_len = 0;
     char msg[STR_LEN];
+    int index = 0;
+    int count = 0;
 
     if (argc != 3)
     {
@@ -43,9 +46,27 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    len = read(client_sock, msg, sizeof(msg));
+    /*TCP套接字，传输从数据不存在数据边界
+    服务器发来12个字节， 客户端一次读取2个字节共读取了6次*/
+    while(len = read(client_sock, msg + index, 2))
+    {
+        if (0 == len)
+        {
+            break;
+        }
+        else if(-1 == len)
+        {
+            error_handing("read() error!");
+            exit(1);
+        }
+        str_len += len;
+        index += 2;
+        count ++;
+
+    }
     msg[STR_LEN -1] = '\0';
     fputs(msg, stdout);
+    printf("read_count:%d, str_len:%d\n", count, str_len);
 
     close(client_sock);
 
