@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     int server_sock, client_sock;
     struct sockaddr_in server_addr, client_addr;
     socklen_t sock_len;
-    char msg[] = "hello word!";
+    char msg[] = "hello word!!";
 
     if(argc != 2)
     {
@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(atoi(argv[1]));
 
-    sock_len = sizeof(server_addr);
-    if (-1 == bind(server_sock, (struct sockaddr *)&server_addr, sock_len))
+    
+    if (-1 == bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)))
     {
         error_handing("bind() error！");
         exit(1);
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    sock_len = sizeof(client_addr);
+    sock_len = sizeof(server_addr);
     client_sock = accept(server_sock, (struct sockaddr*)&server_addr, &sock_len);
     if (-1 == client_sock)
     {

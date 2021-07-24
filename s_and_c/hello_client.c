@@ -50,11 +50,7 @@ int main(int argc, char *argv[])
     服务器发来12个字节， 客户端一次读取2个字节共读取了6次*/
     while(len = read(client_sock, msg + index, 2))
     {
-        if (0 == len)
-        {
-            break;
-        }
-        else if(-1 == len)
+        if(-1 == len)
         {
             error_handing("read() error!");
             exit(1);
