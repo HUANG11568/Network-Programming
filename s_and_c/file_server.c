@@ -4,6 +4,7 @@
 #include<arpa/inet.h>
 #include<string.h>
 #include<sys/socket.h>
+#include<netinet/tcp.h> //TCP_NODELAY在此头文件
 
 #define MSG_LEN 50 
 void error_handing(char *msg)
@@ -21,6 +22,9 @@ int main(int argc, char* argv[])
     int i = 0;
     socklen_t ser_addr_len = 0;
     FILE *fd;
+    socklen_t opt_len = 0;
+    int opt;
+    int result;
 
     if (argc != 2)
     {
@@ -40,9 +44,26 @@ int main(int argc, char* argv[])
         error_handing("socket() error!");
         exit(1);
     }
+    
+    opt = 1;
+    //关闭Nagle算法（默认开启）， 在网络较好，传输大文件场景使用
+    result = setsockopt(server_sock, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt_len));
+    if(-1 == result)
+    {
+        error_handing("setsockopt() error!");
+        exit(1);
+    }
+
+    opt_len = sizeof(opt_len);
+    result = getsockopt(server_sock, IPPROTO_TCP, TCP_NODELAY, &opt, &opt_len);
+    if (-1 == result)
+    {
+        error_handing("getsockopt() error!");
+        exit(1);
+    }
+    printf("opt:%d, opt_len:%d\n", opt, opt_len);
 
     memset(&server_addr, 0, sizeof(struct sockaddr_in));
-
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(atoi(argv[1]));
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
