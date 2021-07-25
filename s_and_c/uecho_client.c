@@ -47,12 +47,31 @@ int main(int argc, char* argv[])
         }
 
         /*sendto会自动分配ip和端口；TCP使用connect函数完成*/
+        /*
+        1.向UDP套接字注册目标IP和端口号
+        2.传输数据
+        3.删除UDP套接字注册的目标地址信息
+
+        备注：可以使用connect建立代替步骤1，此时后续只需传输数据（步骤1和步骤3占整个通讯过程1/3时间）
+        */
+        if(-1 == connect(client_sock, (struct sockaddr*)&send_addr, sizeof(send_addr)))
+        {
+            error_handing("connect error!");
+            exit(1);
+        }
+        
+        //使用connect后，可以使用read和write操作套接字
+        write(client_sock, msg, strlen(msg));
+        read_len = read(client_sock, msg, MSG_LEN);
+        msg[read_len] = '\0';
+        
+        /*
         sendto(client_sock, msg, strlen(msg), 0, (struct sockaddr*)&send_addr, sizeof(send_addr));
-        /*recvfrom中的addr_len需要给准确值*/
+        //recvfrom中的addr_len需要给准确值
         addr_len = sizeof(recv_addr);
         read_len = recvfrom(client_sock, msg, MSG_LEN, 0, (struct sockaddr*)&recv_addr, &addr_len);
         msg[read_len] = '\0';
-
+        */
         printf("recv msg:%s\n", msg);
     }
 

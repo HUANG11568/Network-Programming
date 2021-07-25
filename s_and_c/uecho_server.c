@@ -43,7 +43,8 @@ int main(int argc, char* argv[])
     }
     while(1)
     {
-        sleep(5);
+        //验证UDP数据传输存在边界， 客户端的send次数应与服务器的recv次数相同
+        //sleep(5);
         /*UDP传输，使用recv到的地址；TCP传输时， 直接返回了套接字*/
         /*addr_len需要给准确值*/
         addr_len = sizeof(client_addr);
