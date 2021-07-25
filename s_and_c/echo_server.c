@@ -64,8 +64,8 @@ int main(int argc, char* argv[])
         {
             printf("connect client:%d\n", ++i);
         }
-
-        sleep(10);
+        //验证TCP的数据传输不存在边界，客户端多次write后服务器，只需一次read 
+        //sleep(10);
         while (read_len = read(client_sock, msg, MSG_LEN))
         {
             if(-1 == read_len)
