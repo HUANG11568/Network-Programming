@@ -20,6 +20,9 @@ int main(int argc, char* argv[])
     int read_len = 0;
     int i = 0;
     socklen_t ser_addr_len = 0;
+    socklen_t opt_len = 0;
+    int opt;
+    int result;
 
     if (argc != 2)
     {
@@ -34,8 +37,16 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    memset(&server_addr, 0, sizeof(struct sockaddr_in));
+    opt_len = sizeof(opt_len);
+    opt = 1;
+    //time_wait的端口能分配使用
+    result = setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt_len));
+    {
+        error_handing("setsockopt() error!");
+        exit(1);
+    }
 
+    memset(&server_addr, 0, sizeof(struct sockaddr_in));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(atoi(argv[1]));
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
