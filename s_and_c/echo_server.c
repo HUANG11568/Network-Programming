@@ -7,6 +7,8 @@
 #include<signal.h>
 #include<sys/wait.h>
 #include<errno.h>
+#include<sys/time.h>
+#include<sys/select.h>
 
 #define MSG_LEN 50 
 void error_handing(char *msg)
@@ -37,7 +39,6 @@ void process_exit(int sig)
 int main(int argc, char* argv[])
 {
     struct sockaddr_in server_addr, client_addr;
-    struct sigaction act;
     int server_sock, client_sock;
     char msg[MSG_LEN] = {0};
     int read_len = 0;
@@ -47,15 +48,11 @@ int main(int argc, char* argv[])
     int opt;
     int result;
     pid_t pid;
+    fd_set reads, cp_reads;  //由于每次select调用成功后，文件描述符集合会被写，搞个副本
+    int fd_max; //记录循环的最大值
+    struct timeval time;
+    int read_num;
 
-    memset(&act, 0, sizeof(act));
-    act.sa_handler = process_exit;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = 0;
-    
-
-    sigaction(SIGCHLD, &act, 0);
-    
     if (argc != 2)
     {
         error_handing("please enter port!");
@@ -95,56 +92,82 @@ int main(int argc, char* argv[])
         error_handing("listen() error!");
         exit(1);
     }
+
+   
+    FD_ZERO(&reads);
+    FD_SET(server_sock, &reads);
+    fd_max = server_sock;
+
     while(1)
     {
-        ser_addr_len = sizeof(server_addr);
-        client_sock = accept(server_sock, (struct sockaddr*)&server_addr, &ser_addr_len);
-        if (-1 == client_sock)
+        //由于select阻塞运行，此处设置超时时间
+        time.tv_sec = 3;
+        time.tv_usec = 0;
+
+        cp_reads = reads;
+        //第一个参数+1是因为文件描述符从0算起多一个
+        read_num = select(fd_max+1, &cp_reads, 0, 0,&time);
+        if(0 == read_num)
         {
-            //若子进程退出时，会产生中断，erron为EINTR，此时重新调用accept
-            if(EINTR != errno)
-            {
-                printf("eccept() error! %d : %s\n", errno, strerror(errno));
-            }       
+            printf("select time out\n");
             continue;
         }
-        else
+        else if(-1 == read_num)
         {
-            printf("connect client:%d\n", ++i);
+            printf("select error\n");
+            break;
         }
-        
-        pid = fork();
-        if (0 == pid)
+        for (int j = 0; j <= fd_max; j++)
         {
-            //子进程负责通信
-            //验证TCP的数据传输不存在边界，客户端多次write后服务器，只需一次read 
-            //sleep(10);
-            close(server_sock);/*子进程中关闭服务器套接字*/
-            while (read_len = read(client_sock, msg, MSG_LEN))
+            if(!FD_ISSET(j, &cp_reads))
             {
-                if(-1 == read_len)
+                continue;
+            }
+            if(j == server_sock)
+            {
+                ser_addr_len = sizeof(server_addr);
+                client_sock = accept(server_sock, (struct sockaddr*)&server_addr, &ser_addr_len);
+                if (-1 == client_sock)
                 {
-                    error_handing("read() error!");
-                    break;
+                    //若子进程退出时，会产生中断，erron为EINTR，此时重新调用accept
+                    if(EINTR != errno)
+                    {
+                        printf("eccept() error! %d : %s\n", errno, strerror(errno));
+                    }       
+                    continue;
                 }
-
-                write(client_sock, msg, read_len);
+                else
+                {
+                    printf("connect client:%d\n", ++i);
+                    FD_SET(client_sock, &reads);
+                    if(client_sock > fd_max)
+                    {
+                        fd_max = client_sock;
+                    }
+                }
             }
-            if(0 == read_len)
+            else
             {
-                fputs("read end!\n", stdout);
-                close(client_sock);
+                //验证TCP的数据传输不存在边界，客户端多次write后服务器，只需一次read 
+                //sleep(10);
+                while (read_len = read(j, msg, MSG_LEN))
+                {
+                    if(-1 == read_len)
+                    {
+                        error_handing("read() error!");
+                        break;
+                    }
+
+                    write(j, msg, read_len);
+                }
+                if(0 == read_len)
+                {
+                    fputs("read end!\n", stdout);
+                    FD_CLR(j, &reads);
+                    close(j);
+                }
             }
-
-            //子进程退出返回0
-            close(client_sock);
-            return 0;
-
         }
-        else
-        {
-            close(client_sock);/*父进程中关闭客户端套接字*/
-        }        
     }
     close(server_sock);
     return 0;
