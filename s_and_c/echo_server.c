@@ -148,24 +148,25 @@ int main(int argc, char* argv[])
             }
             else
             {
-                //验证TCP的数据传输不存在边界，客户端多次write后服务器，只需一次read 
-                //sleep(10);
-                while (read_len = read(j, msg, MSG_LEN))
+                read_len = read(j, msg, MSG_LEN);        
+                if(-1 == read_len)
                 {
-                    if(-1 == read_len)
-                    {
-                        error_handing("read() error!");
-                        break;
-                    }
-
-                    write(j, msg, read_len);
+                    error_handing("read() error!");
+                    break;
                 }
-                if(0 == read_len)
+                else if(0 == read_len)
                 {
                     fputs("read end!\n", stdout);
                     FD_CLR(j, &reads);
                     close(j);
                 }
+                else
+                {
+                    write(j, msg, read_len);
+                }
+                    
+                
+
             }
         }
     }
