@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
         send_len = write(sock, msg, strlen(msg));
 
         rcv_len = 0;
-        if(rcv_len < send_len)
+        while(rcv_len < send_len)
         {
             read_len = read(sock, &msg[rcv_len], MSG_LEN -1);
             if(-1 == read_len)

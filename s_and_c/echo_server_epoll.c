@@ -9,8 +9,9 @@
 #include<errno.h>
 #include<sys/time.h>
 #include<sys/epoll.h>
+#include<fcntl.h>
 
-#define MSG_LEN 50 
+#define MSG_LEN 3 
 #define EPOLL_SIZE 100
 void error_handing(char *msg)
 {
@@ -57,6 +58,7 @@ int main(int argc, char* argv[])
     int read_num;
     int epoll_cnt = 0;
     int fd_client = 0;
+    int flag;
 
     if (argc != 2)
     {
@@ -134,34 +136,41 @@ int main(int argc, char* argv[])
                 else
                 {           
                     event.data.fd = client_sock;
-                    event.events = EPOLLIN;
+                    flag = fcntl(client_sock, F_GETFL, 0);
+                    fcntl(client_sock, F_SETFL, flag|O_NONBLOCK);
+                    event.events = EPOLLIN|EPOLLET;
                     epoll_ctl(epfd, EPOLL_CTL_ADD, client_sock, &event);
                     printf("connect client:%d\n", ++i);
                 }
             }
             else
             {
-                //验证TCP的数据传输不存在边界，客户端多次write后服务器，只需一次read 
-                //sleep(10);
-                fd_client = ep_event[j].data.fd;
-                printf("client_fd:%d\n", fd_client);
-                read_len = read(fd_client, msg, MSG_LEN);
-                
-                if(-1 == read_len)
+        
+                while(1)
                 {
-                    error_handing("read() error!");
-                    break;
+                    fd_client = ep_event[j].data.fd;
+                    printf("client_fd:%d\n", fd_client);
+                    read_len = read(fd_client, msg, MSG_LEN);
+                    
+                    if(-1 == read_len)
+                    {
+                        if(EAGAIN != errno)
+                            error_handing("read() error!");
+                        break;
+                    }
+                    else if(0 == read_len)
+                    {
+                        fputs("read end!\n", stdout);
+                        epoll_ctl(epfd, EPOLL_CTL_DEL, fd_client, NULL);
+                        close(fd_client);
+                        break;
+                    }
+                    else
+                    {
+                        write(fd_client, msg, read_len);
+                    }
                 }
-                else if(0 == read_len)
-                {
-                    fputs("read end!\n", stdout);
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, fd_client, NULL);
-                    close(fd_client);
-                }
-                else
-                {
-                    write(fd_client, msg, read_len);
-                }
+
                 
             }
         }
